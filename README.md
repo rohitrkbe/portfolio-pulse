@@ -150,7 +150,7 @@ flowchart TD
 | Concern | Choice | Rationale |
 |---|---|---|
 | Framework | Next.js 16 (App Router) | API routes co-located with the app; layout-based auth guard; no separate backend repo needed |
-| Language | JavaScript (ES2022) | Used for development speed given the time constraint. **Note:** the case study specifies TypeScript — see Trade-offs section for where I would apply it first |
+| Language | TypeScript 6 (strict mode) | Full static typing across all source files — see Commit History for migration notes |
 | State | Redux Toolkit + Thunk | Three slices with clear cross-component sharing. Thunk is sufficient for async fetch; no need for Saga. RTK's `createAsyncThunk` with `condition` option prevents duplicate in-flight requests |
 | Charts | Recharts | Declarative and composable — `PieChart` + `LineChart` needed, both well-supported. Lighter than D3 for standard chart types; easier to theme than Chart.js |
 | Styling | Tailwind CSS v4 | Utility-first; dark mode via `@custom-variant` (not `tailwind.config.js`); no runtime CSS-in-JS |
@@ -165,70 +165,75 @@ flowchart TD
 neo-dashboard/
 ├── app/
 │   ├── api/clients/                # Mock REST API — Next.js Route Handlers
-│   │   ├── route.js                # GET /api/clients
+│   │   ├── route.ts                # GET /api/clients
 │   │   └── [id]/
-│   │       ├── portfolio/route.js  # GET /api/clients/:id/portfolio
-│   │       ├── performance/route.js# GET /api/clients/:id/performance
-│   │       └── rebalance/route.js  # POST /api/clients/:id/rebalance
-│   ├── login/page.js               # Auth route (particle canvas + star-pattern stats)
+│   │       ├── portfolio/route.ts  # GET /api/clients/:id/portfolio
+│   │       ├── performance/route.ts# GET /api/clients/:id/performance
+│   │       └── rebalance/route.ts  # POST /api/clients/:id/rebalance
+│   ├── (auth)/login/page.tsx       # Auth route — email/password login with demo credentials
 │   ├── dashboard/
-│   │   ├── layout.js               # Auth guard + Header (shared across all /dashboard/* routes)
-│   │   ├── page.js                 # Client list — SummaryStats + FilterSortBar + ClientsTable
-│   │   └── clients/[id]/page.js    # Portfolio detail — charts, holdings, rebalancing
-│   ├── layout.js                   # Root layout — providers, dark mode blocking script, Toaster
+│   │   ├── layout.tsx              # Header (shared across all /dashboard/* routes)
+│   │   ├── page.tsx                # Client list — SummaryStats + FilterSortBar + ClientsTable
+│   │   └── clients/[id]/page.tsx   # Portfolio detail — charts, holdings, rebalancing
+│   ├── layout.tsx                  # Root layout — providers, dark mode blocking script, Toaster
 │   ├── globals.css                 # Tailwind v4 config, dark mode variant, animation keyframes
-│   └── page.js                     # Root redirect (/ → /login or /dashboard)
+│   └── page.tsx                    # Root redirect (/ → /login or /dashboard)
 │
 ├── components/
 │   ├── ui/                         # Presentational — no Redux, no side effects
-│   │   ├── Icons.js                # All SVG icons in one place; imported everywhere
-│   │   ├── Input.js                # Reusable input (label, error, suffix, forwardRef)
-│   │   ├── Button.js               # Variants: primary, secondary, ghost, danger
-│   │   ├── Badge.js                # Risk profile and status badges
-│   │   ├── Card.js                 # Surface container with optional padding
-│   │   ├── StatCard.js             # KPI card with icon, label, value, sub-value
-│   │   ├── LoadingSpinner.js       # PageLoader and SectionLoader variants
-│   │   ├── EmptyState.js           # Empty and error states
-│   │   └── ParticleCanvas.js       # Canvas particle animation (mouse-interactive)
+│   │   ├── Icons.tsx               # All SVG icons in one place; imported everywhere
+│   │   ├── Input.tsx               # Reusable input (label, error, suffix, forwardRef)
+│   │   ├── Button.tsx              # Variants: primary, secondary, ghost, danger
+│   │   ├── Badge.tsx               # Risk profile and status badges
+│   │   ├── Card.tsx                # Surface container with optional padding
+│   │   ├── StatCard.tsx            # KPI card with icon, label, value, sub-value
+│   │   ├── LoadingSpinner.tsx      # PageLoader and SectionLoader variants
+│   │   ├── EmptyState.tsx          # Empty and error states
+│   │   └── ParticleCanvas.tsx      # Canvas particle animation (mouse-interactive)
 │   ├── layout/
-│   │   └── Header.js               # Logo, dark mode toggle, user chip, logout
+│   │   └── Header.tsx              # Logo, dark mode toggle, user chip, logout
 │   ├── dashboard/                  # Smart — connected to Redux
-│   │   ├── SummaryStats.js         # 4 KPI cards (AUM, clients, alerts, YTD)
-│   │   ├── FilterSortBar.js        # Risk filter + debounced search + sort controls
-│   │   └── ClientsTable.js         # Staggered-animated rows; colour-coded avatars
+│   │   ├── SummaryStats.tsx        # 4 KPI cards (AUM, clients, alerts, YTD)
+│   │   ├── FilterSortBar.tsx       # Risk filter + debounced search + sort controls
+│   │   └── ClientsTable.tsx        # Staggered-animated rows; colour-coded avatars
 │   └── portfolio/                  # Smart — connected to Redux
-│       ├── AllocationChart.js      # Recharts PieChart donut + bar comparison
-│       ├── HoldingsTable.js        # Sortable holdings table + CSV export
-│       ├── PerformanceChart.js     # Recharts LineChart vs benchmark
-│       └── RebalancingPanel.js     # Drift analysis + buy/sell recs + mark reviewed
+│       ├── AllocationChart.tsx     # Recharts PieChart donut + bar comparison
+│       ├── HoldingsTable.tsx       # Sortable holdings table + CSV export
+│       ├── PerformanceChart.tsx    # Recharts LineChart vs benchmark
+│       └── RebalancingPanel.tsx    # Drift analysis + buy/sell recs + mark reviewed
 │
 ├── store/
-│   ├── index.js                    # Redux store configuration
+│   ├── index.ts                    # Redux store configuration + RootState / AppDispatch types
 │   ├── slices/                     # State shape · synchronous reducers · selectors
-│   │   ├── authSlice.js            # Auth state (user, isAuthenticated, loginError)
-│   │   ├── clientsSlice.js         # Items, filters, sort + selectFilteredSortedClients
-│   │   └── portfolioSlice.js       # Portfolio data, performance, rebalance status
+│   │   ├── authSlice.ts            # Auth state (user, isAuthenticated, loginError)
+│   │   ├── clientsSlice.ts         # Items, filters, sort + selectFilteredSortedClients
+│   │   └── portfolioSlice.ts       # Portfolio data, performance, rebalance status
 │   └── thunks/                     # Async operations · side effects · API calls
-│       ├── authThunks.js           # loginThunk, hydrateAuthThunk, logoutThunk
-│       ├── clientsThunks.js        # fetchClients (with condition guard)
-│       └── portfolioThunks.js      # fetchPortfolio, fetchPerformance, submitRebalance
+│       ├── authThunks.ts           # loginThunk, hydrateAuthThunk, logoutThunk
+│       ├── clientsThunks.ts        # fetchClients (with condition guard)
+│       └── portfolioThunks.ts      # fetchPortfolio, fetchPerformance, submitRebalance
 │
 ├── lib/
-│   ├── constants.js                # Enums, DRIFT_THRESHOLD, color maps, sort fields
-│   ├── formatters.js               # formatCurrency (INR Cr/L), formatPercentage, formatDate
-│   ├── rebalancingEngine.js        # Pure functions: computeDrifts, generateRecommendations
-│   ├── strings.js                  # All UI text constants — never hardcoded in components
+│   ├── constants.ts                # Enums, DRIFT_THRESHOLD, color maps, sort fields
+│   ├── formatters.ts               # formatCurrency (INR Cr/L), formatPercentage, formatDate
+│   ├── rebalancingEngine.ts        # Pure functions: computeDrifts, generateRecommendations
+│   ├── strings.ts                  # All UI text constants — never hardcoded in components
+│   ├── auth.ts                     # Session helpers: setUserSession, getUserSession, clear
+│   ├── mockData.ts                 # MOCK_CREDENTIALS for demo login
 │   └── mockData/
-│       ├── clients.js              # 6 HNI client summaries
-│       ├── portfolios.js           # Full asset allocation + 60+ holdings
-│       └── performance.js          # 6-month indexed returns (Dec 2025 → May 2026)
+│       ├── clients.ts              # 6 HNI client summaries
+│       ├── portfolios.ts           # Full asset allocation + 60+ holdings
+│       └── performance.ts          # 6-month indexed returns (Dec 2025 → May 2026)
+│
+├── types/
+│   └── index.ts                    # All domain types: Client, Portfolio, Holding, DriftResult…
 │
 ├── providers/
-│   ├── StoreProvider.js            # Redux Provider + hydrateAuthThunk on mount
-│   └── ThemeProvider.js            # Dark mode context — reads/writes pp_theme to localStorage
+│   ├── StoreProvider.tsx           # Redux Provider + hydrateAuthThunk on mount
+│   └── ThemeProvider.tsx           # Dark mode context — reads/writes pp_theme to localStorage
 │
 └── hooks/
-    └── useAuth.js                  # Thin hook: exposes user, login, logout from Redux
+    └── useAuth.ts                  # Thin hook: exposes user, login, logout from Redux
 ```
 
 ---
@@ -568,16 +573,9 @@ Both keys are cleared on logout. Neither contains sensitive data — `pp_auth` h
 
 ## Trade-offs & Known Limitations
 
-### 1. JavaScript, not TypeScript
+### 1. TypeScript — Fully Migrated
 
-The case study specifies TypeScript as a hard requirement. JavaScript was chosen for speed, but the highest-value migration targets would be:
-
-- **`lib/rebalancingEngine.js`** — `AssetAllocation` and `Recommendation[]` interfaces prevent `currentPct`/`targetPct` confusion
-- **`store/slices/portfolioSlice.js`** — discriminated union `'pending' | 'reviewed' | 'not_required'` instead of plain strings
-- **`lib/mockData/`** — typed interfaces catch shape mismatches at compile time
-- **API route handlers** — request/response types prevent wrong envelope shapes
-
-Migration order: `lib/` → `store/` → `components/ui/` → feature components.
+The codebase was originally prototyped in JavaScript for speed, then fully migrated to TypeScript in commit 2 (see Commit History). All source files are now `.ts`/`.tsx` with `strict: true` — zero `any` escapes except where Recharts' incomplete third-party types require a single `as unknown` cast.
 
 ### 2. Client-side auth
 
@@ -593,7 +591,7 @@ Marking a rebalance as reviewed updates Redux and the mock API responds `200`, b
 
 ### 5. No unit tests
 
-The rebalancing engine (`lib/rebalancingEngine.js`) consists entirely of pure functions and is the ideal first test target. Given the time constraint it was skipped. See "What I'd Build Next."
+The rebalancing engine (`lib/rebalancingEngine.ts`) consists entirely of pure functions and is the ideal first test target. Given the time constraint it was skipped. See "What I'd Build Next."
 
 ### 6. Recharts SSR
 
@@ -622,5 +620,53 @@ Recharts does not support SSR. All chart components carry `'use client'`. In pro
 6. **CDN + edge delivery** — Per-user cache keys on Cloudflare Workers / Vercel Edge for auth-scoped responses.
 
 7. **Live alerts via SSE** — Server-sent events push rebalancing flags as they occur; Redux store updates without polling.
+
+---
+
+## Commit History
+
+| # | Commit | Description |
+|---|---|---|
+| 1 | `Initial commit` | Full JavaScript (ES2022) implementation — all features built, mock data, Redux architecture, charts, rebalancing engine, dark mode |
+| 2 | `feat(ts): migrate entire codebase from JavaScript to TypeScript` | Every `.js`/`.jsx` file converted to `.ts`/`.tsx`; `strict: true` enabled; zero type errors; Recharts v3 type workarounds; done with Claude's assistance |
+| 3 | `docs: update README for TypeScript migration and add commit history` | This commit — README updated to reflect TypeScript stack, project structure updated, new sections added |
+
+---
+
+## Built with Claude
+
+Features, architecture decisions, and code patterns implemented with Claude's assistance.
+
+### TypeScript Migration (59 files)
+
+- **Full codebase migration** — every `.js`/`.jsx` converted to `.ts`/`.tsx` with `strict: true`, zero `any` escapes
+- **Domain type system** (`types/index.ts`) — `Client`, `Portfolio`, `Holding`, `RiskProfile`, `RebalancingStatus`, `MockPortfolioData` (Omit pattern), and more
+- **Redux typed infrastructure** — `RootState`, `AppDispatch`, `AppStore` exported from `store/index.ts`; `selectClientById` and `selectCurrentPortfolio` selectors added
+- **`Record<string, unknown>` cast pattern** — used in `clientsSlice.ts` and `HoldingsTable.tsx` to sort by dynamic field keys without index-signature errors
+- **Recharts v3 type workarounds** — replaced broken recharts type exports with custom local interfaces (`CustomTooltipProps`, `CustomLegendProps`, `LegendEntry`, `TooltipPayloadEntry`)
+- **Next.js 16 async params** — route handlers typed as `Promise<{ id: string }>`; client pages use the `use(params)` hook
+- **Route group for auth** — login moved to `app/(auth)/login/page.tsx` to resolve duplicate route conflicts after migration
+
+### Auth & Session
+
+- **`lib/mockData.ts`** — `MOCK_CREDENTIALS` array with `MockCredential` interface for demo login
+- **Demo credential buttons** — login page renders clickable cards from `MOCK_CREDENTIALS` so reviewers can sign in without typing
+
+### Redux Architecture
+
+- **`createAsyncThunk` condition guard** — prevents duplicate API calls in React Strict Mode's double-mount cycle; guard lives inside the thunk so it protects against any caller
+
+### UI & Components
+
+- **Staggered row animations** — `--row-delay: ${index * 45}ms` CSS variable per row; `animation-delay: var(--row-delay)` in `globals.css`; no animation library needed
+- **Dark mode blocking script** — synchronous `<script>` in `<head>` sets the theme class before React hydration, eliminating flash of unstyled content
+- **`AllocationChart`** — Recharts donut with custom tooltip (current %, target %, INR value), drift indicators in legend, and bar comparison rows
+- **`PerformanceChart`** — dual-line chart (portfolio vs Nifty 50) with custom tooltip
+- **`HoldingsTable`** — client-side sortable by any column with CSV export
+- **`RebalancingPanel`** — drift bars with colour-coded over/underweight, buy/sell recommendations, and Mark as Reviewed
+
+### Rebalancing Engine
+
+- **Proportional allocation algorithm** — overweight classes → proportional sells weighted by holding value; underweight → proportional buys; fallback to index fund if no holdings exist in the class
 
 ---
