@@ -56,7 +56,7 @@ Password: Welcome@123
 | CSV export of holdings table | ✅ |
 | Login screen with hardcoded credentials | ✅ |
 | Responsive layout for tablet (768px+) | ✅ |
-| Unit tests for rebalancing engine | ❌ — see Trade-offs |
+| Unit tests for rebalancing engine | ✅ — 52 tests via Vitest |
 
 ---
 
@@ -589,9 +589,9 @@ The client table renders all records in memory. With more data, this is the firs
 
 Marking a rebalance as reviewed updates Redux and the mock API responds `200`, but the in-memory mock data resets on server restart. Production would write to a database with a transaction log.
 
-### 5. No unit tests
+### 5. Unit tests — rebalancing engine only
 
-The rebalancing engine (`lib/rebalancingEngine.ts`) consists entirely of pure functions and is the ideal first test target. Given the time constraint it was skipped. See "What I'd Build Next."
+52 Vitest tests cover `computeDrifts`, `requiresRebalancing`, `validateAllocation`, and `generateRebalancingRecommendations` (see `__tests__/rebalancingEngine.test.ts`). React component tests were not added — `@testing-library/react` requires `jsdom` and SSR-safe mocking of Next.js router/Redux, which would take longer to configure correctly than the component logic warrants for this demo.
 
 ### 6. Recharts SSR
 
@@ -629,7 +629,8 @@ Recharts does not support SSR. All chart components carry `'use client'`. In pro
 |---|---|---|
 | 1 | `Initial commit` | Full JavaScript (ES2022) implementation — all features built, mock data, Redux architecture, charts, rebalancing engine, dark mode |
 | 2 | `feat(ts): migrate entire codebase from JavaScript to TypeScript` | Every `.js`/`.jsx` file converted to `.ts`/`.tsx`; `strict: true` enabled; zero type errors; Recharts v3 type workarounds; done with Claude's assistance |
-| 3 | `docs: update README for TypeScript migration and add commit history` | This commit — README updated to reflect TypeScript stack, project structure updated, new sections added |
+| 3 | `docs: update README for TypeScript migration and add commit history` | README updated to reflect TypeScript stack, project structure updated, new sections added |
+| 4 | `test: add 52 unit tests for rebalancing engine` | Vitest configured (`vitest.config.mts`); `__tests__/rebalancingEngine.test.ts` covers all four exported pure functions — boundary conditions, edge cases, proportional split logic, fallback index fund path |
 
 ---
 
@@ -668,5 +669,11 @@ Features, architecture decisions, and code patterns implemented with Claude's as
 ### Rebalancing Engine
 
 - **Proportional allocation algorithm** — overweight classes → proportional sells weighted by holding value; underweight → proportional buys; fallback to index fund if no holdings exist in the class
+
+### Unit Tests
+
+- **Vitest setup** — `vitest.config.mts` with native `resolve.tsconfigPaths: true`; pure Node environment (no jsdom needed for engine-only tests)
+- **52 tests across 8 describe blocks** — baseline behaviour + dedicated edge-case suites for each of the four exported functions
+- **Edge cases covered** — empty inputs, mutation safety, large/boundary drifts, zero-value holdings (equal-split fallback), overweight class with no holdings, fallback ticker/ID format (`REALES_IDX`, `rec-new-real-estate`), unique IDs across multi-class portfolios, integer-amount guarantee
 
 ---
