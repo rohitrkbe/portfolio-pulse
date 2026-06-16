@@ -21,11 +21,12 @@ npm run dev
 # Open http://localhost:3000
 ```
 
-**Demo credentials**
-```
-Email:    rm@portfoliopulse.in
-Password: Welcome@123
-```
+**Demo credentials** — click any card on the login screen, or enter manually:
+
+| Name | Email | Password | Role |
+|---|---|---|---|
+| Rahul Verma | rm@portfoliopulse.in | Welcome@123 | Relationship Manager |
+| Priya Kapoor | priya@portfoliopulse.in | Demo@456 | Senior RM |
 
 ---
 
@@ -54,7 +55,7 @@ Password: Welcome@123
 |---|---|
 | Dark mode with localStorage persistence | ✅ |
 | CSV export of holdings table | ✅ |
-| Login screen with hardcoded credentials | ✅ |
+| Login screen with demo credential cards | ✅ |
 | Responsive layout for tablet (768px+) | ✅ |
 | Unit tests for rebalancing engine | ✅ — 52 tests via Vitest |
 
@@ -64,7 +65,7 @@ Password: Welcome@123
 
 ```mermaid
 flowchart TD
-    Start([Browser opens app]) --> Root["/ — root page\napp/page.js"]
+    Start([Browser opens app]) --> Root["/ — root page\nsrc/app/page.tsx"]
     Root -->|reads pp_auth from localStorage| AuthCheck{Session\nexists?}
 
     AuthCheck -->|No| Login["/login — Login Page"]
@@ -97,7 +98,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    User([User Action]) --> Component["React Component\napp/ · components/"]
+    User([User Action]) --> Component["React Component\nsrc/app/ · src/components/"]
 
     Component -->|dispatch sync action\ne.g. setRiskFilter setSearchQuery| Reducer["store/slices/ — Immer reducer\nUpdates state synchronously"]
 
@@ -108,7 +109,7 @@ flowchart TD
     Thunk -->|dispatch pending| Reducer
     Thunk -->|HTTP request| API["app/api/ — Next.js Route Handler\n100–200ms simulated latency"]
     API -->|reads| MockData["lib/mockData/\nclients · portfolios · performance"]
-    API -->|runs for /portfolio| Engine["lib/rebalancingEngine.js\ngenerateRebalancingRecommendations"]
+    API -->|runs for /portfolio| Engine["lib/rebalancingEngine.ts\ngenerateRebalancingRecommendations"]
     Engine --> API
     API -->|JSON response| Thunk
     Thunk -->|dispatch fulfilled| Reducer
@@ -123,9 +124,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Trigger([RM clicks Mark as Reviewed]) --> Dispatch["dispatch(submitRebalance)\nstore/thunks/portfolioThunks.js"]
+    Trigger([RM clicks Mark as Reviewed]) --> Dispatch["dispatch(submitRebalance)\nstore/thunks/portfolioThunks.ts"]
     Dispatch --> API["POST /api/clients/:id/rebalance"]
-    API --> Engine["lib/rebalancingEngine.js"]
+    API --> Engine["lib/rebalancingEngine.ts"]
     Engine --> Drift["computeDrifts(assetAllocation)\ndrift = currentPct − targetPct\nfor each asset class"]
 
     Drift --> Threshold{"|drift| > 5pp?"}
@@ -163,77 +164,107 @@ flowchart TD
 
 ```
 neo-dashboard/
-├── app/
-│   ├── api/clients/                # Mock REST API — Next.js Route Handlers
-│   │   ├── route.ts                # GET /api/clients
-│   │   └── [id]/
-│   │       ├── portfolio/route.ts  # GET /api/clients/:id/portfolio
-│   │       ├── performance/route.ts# GET /api/clients/:id/performance
-│   │       └── rebalance/route.ts  # POST /api/clients/:id/rebalance
-│   ├── (auth)/login/page.tsx       # Auth route — email/password login with demo credentials
-│   ├── dashboard/
-│   │   ├── layout.tsx              # Header (shared across all /dashboard/* routes)
-│   │   ├── page.tsx                # Client list — SummaryStats + FilterSortBar + ClientsTable
-│   │   └── clients/[id]/page.tsx   # Portfolio detail — charts, holdings, rebalancing
-│   ├── layout.tsx                  # Root layout — providers, dark mode blocking script, Toaster
-│   ├── globals.css                 # Tailwind v4 config, dark mode variant, animation keyframes
-│   └── page.tsx                    # Root redirect (/ → /login or /dashboard)
+├── src/                                    # All application source code
+│   ├── app/
+│   │   ├── api/clients/                    # Mock REST API — Next.js Route Handlers
+│   │   │   ├── route.ts                    # GET /api/clients
+│   │   │   └── [id]/
+│   │   │       ├── portfolio/route.ts      # GET /api/clients/:id/portfolio
+│   │   │       ├── performance/route.ts    # GET /api/clients/:id/performance
+│   │   │       └── rebalance/route.ts      # POST /api/clients/:id/rebalance
+│   │   ├── (auth)/login/page.tsx           # Auth route — email/password + demo credential cards
+│   │   ├── dashboard/
+│   │   │   ├── layout.tsx                  # Header (shared across all /dashboard/* routes)
+│   │   │   ├── page.tsx                    # Client list — SummaryStats + FilterSortBar + ClientsTable
+│   │   │   └── clients/[id]/page.tsx       # Portfolio detail — charts, holdings, rebalancing
+│   │   ├── layout.tsx                      # Root layout — providers, dark mode script, Toaster
+│   │   ├── globals.css                     # Tailwind v4 config, dark mode variant, animation keyframes
+│   │   └── page.tsx                        # Root redirect (/ → /login or /dashboard)
+│   │
+│   ├── components/
+│   │   ├── ui/                             # Presentational — no Redux, no side effects
+│   │   │   ├── Icons.tsx                   # All SVG icons in one place
+│   │   │   ├── Input.tsx                   # Reusable input (label, error, suffix, forwardRef)
+│   │   │   ├── Button.tsx                  # Variants: primary, secondary, ghost, danger
+│   │   │   ├── Badge.tsx                   # Risk profile and status badges
+│   │   │   ├── Card.tsx                    # Surface container with optional padding
+│   │   │   ├── StatCard.tsx                # KPI card with icon, label, value, sub-value
+│   │   │   ├── LoadingSpinner.tsx          # PageLoader and SectionLoader variants
+│   │   │   ├── EmptyState.tsx              # Empty and error states
+│   │   │   └── ParticleCanvas.tsx          # Canvas particle animation (mouse-interactive)
+│   │   ├── layout/
+│   │   │   ├── AuthGuard.tsx               # Session check — redirects to /login if unauthenticated
+│   │   │   ├── AuthLoader.tsx              # Full-screen animated loading screen (particles + blobs)
+│   │   │   └── Header.tsx                  # Logo, dark mode toggle, user chip, logout
+│   │   ├── dashboard/                      # Smart — connected to Redux
+│   │   │   ├── SummaryStats.tsx            # 4 KPI cards (AUM, clients, alerts, YTD)
+│   │   │   ├── FilterSortBar.tsx           # Risk filter + debounced search + sort controls
+│   │   │   ├── ClientsTable.tsx            # Virtualised table — staggered animations, colour avatars
+│   │   │   └── clients/                    # Micro components used by ClientsTable
+│   │   │       ├── ClientRow.tsx           # Memoised row (React.memo)
+│   │   │       ├── ClientAvatar.tsx        # Gradient avatar with initials
+│   │   │       └── AlertBadge.tsx          # Amber "Rebalance" pill badge
+│   │   └── portfolio/                      # Smart — connected to Redux
+│   │       ├── AllocationChart.tsx         # Recharts PieChart donut + bar comparison
+│   │       ├── HoldingsTable.tsx           # Sortable holdings table + CSV export
+│   │       ├── PerformanceChart.tsx        # Recharts LineChart vs benchmark
+│   │       ├── RebalancingPanel.tsx        # Drift analysis + buy/sell recs + mark reviewed
+│   │       ├── ActionBadge.tsx             # Buy/Sell pill badge
+│   │       └── DriftIndicator.tsx          # Progress bar showing current vs target allocation
+│   │
+│   ├── constants/                          # Category-split constant files
+│   │   ├── index.ts                        # Barrel re-export of all constants
+│   │   ├── domain.ts                       # Business constants: risk profiles, asset classes, sort fields, thresholds
+│   │   ├── ui.ts                           # UI constants: table dimensions, gradients, debounce, toast duration
+│   │   ├── charts.ts                       # Chart dimensions, margins, colors, stroke widths
+│   │   ├── strings.ts                      # All UI text — app name, labels, headings, error messages
+│   │   ├── routes.ts                       # ROUTES object + ROUTE_META
+│   │   ├── animation.ts                    # CSS animation durations and delays
+│   │   └── particles.ts                    # ParticleCanvas tuning parameters
+│   │
+│   ├── helpers/                            # Pure utility functions
+│   │   ├── index.ts                        # Barrel re-export
+│   │   ├── formatters.ts                   # formatCurrency (INR Cr/L), formatPercentage, formatDate
+│   │   └── session.ts                      # setUserSession, getUserSession, clearUserSession
+│   │
+│   ├── hooks/
+│   │   └── useAuth.ts                      # Thin hook: exposes user, login, logout from Redux
+│   │
+│   ├── lib/
+│   │   ├── rebalancingEngine.ts            # Pure functions: computeDrifts, generateRecommendations
+│   │   ├── mockData.ts                     # MOCK_CREDENTIALS for demo login
+│   │   └── mockData/
+│   │       ├── clients.ts                  # 6 HNI client summaries
+│   │       ├── portfolios.ts               # Full asset allocation + 60+ holdings
+│   │       └── performance.ts              # 6-month indexed returns (Dec 2025 → May 2026)
+│   │
+│   ├── providers/
+│   │   ├── StoreProvider.tsx               # Redux Provider + hydrateAuthThunk on mount
+│   │   └── ThemeProvider.tsx               # Dark mode context — reads/writes pp_theme to localStorage
+│   │
+│   ├── store/
+│   │   ├── index.ts                        # Redux store configuration + RootState / AppDispatch types
+│   │   ├── slices/                         # State shape · synchronous reducers · selectors
+│   │   │   ├── authSlice.ts                # Auth state (user, isAuthenticated, loginError)
+│   │   │   ├── clientsSlice.ts             # Items, filters, sort + selectFilteredSortedClients
+│   │   │   └── portfolioSlice.ts           # Portfolio data, performance, rebalance status
+│   │   └── thunks/                         # Async operations · side effects · API calls
+│   │       ├── authThunks.ts               # loginThunk, hydrateAuthThunk, logoutThunk
+│   │       ├── clientsThunks.ts            # fetchClients (with condition guard)
+│   │       └── portfolioThunks.ts          # fetchPortfolio, fetchPerformance, submitRebalance
+│   │
+│   ├── types/
+│   │   └── index.ts                        # All domain types: Client, Portfolio, Holding, DriftResult…
+│   │
+│   └── __tests__/
+│       └── rebalancingEngine.test.ts       # 52 Vitest tests across 8 describe blocks
 │
-├── components/
-│   ├── ui/                         # Presentational — no Redux, no side effects
-│   │   ├── Icons.tsx               # All SVG icons in one place; imported everywhere
-│   │   ├── Input.tsx               # Reusable input (label, error, suffix, forwardRef)
-│   │   ├── Button.tsx              # Variants: primary, secondary, ghost, danger
-│   │   ├── Badge.tsx               # Risk profile and status badges
-│   │   ├── Card.tsx                # Surface container with optional padding
-│   │   ├── StatCard.tsx            # KPI card with icon, label, value, sub-value
-│   │   ├── LoadingSpinner.tsx      # PageLoader and SectionLoader variants
-│   │   ├── EmptyState.tsx          # Empty and error states
-│   │   └── ParticleCanvas.tsx      # Canvas particle animation (mouse-interactive)
-│   ├── layout/
-│   │   └── Header.tsx              # Logo, dark mode toggle, user chip, logout
-│   ├── dashboard/                  # Smart — connected to Redux
-│   │   ├── SummaryStats.tsx        # 4 KPI cards (AUM, clients, alerts, YTD)
-│   │   ├── FilterSortBar.tsx       # Risk filter + debounced search + sort controls
-│   │   └── ClientsTable.tsx        # Staggered-animated rows; colour-coded avatars
-│   └── portfolio/                  # Smart — connected to Redux
-│       ├── AllocationChart.tsx     # Recharts PieChart donut + bar comparison
-│       ├── HoldingsTable.tsx       # Sortable holdings table + CSV export
-│       ├── PerformanceChart.tsx    # Recharts LineChart vs benchmark
-│       └── RebalancingPanel.tsx    # Drift analysis + buy/sell recs + mark reviewed
-│
-├── store/
-│   ├── index.ts                    # Redux store configuration + RootState / AppDispatch types
-│   ├── slices/                     # State shape · synchronous reducers · selectors
-│   │   ├── authSlice.ts            # Auth state (user, isAuthenticated, loginError)
-│   │   ├── clientsSlice.ts         # Items, filters, sort + selectFilteredSortedClients
-│   │   └── portfolioSlice.ts       # Portfolio data, performance, rebalance status
-│   └── thunks/                     # Async operations · side effects · API calls
-│       ├── authThunks.ts           # loginThunk, hydrateAuthThunk, logoutThunk
-│       ├── clientsThunks.ts        # fetchClients (with condition guard)
-│       └── portfolioThunks.ts      # fetchPortfolio, fetchPerformance, submitRebalance
-│
-├── lib/
-│   ├── constants.ts                # Enums, DRIFT_THRESHOLD, color maps, sort fields
-│   ├── formatters.ts               # formatCurrency (INR Cr/L), formatPercentage, formatDate
-│   ├── rebalancingEngine.ts        # Pure functions: computeDrifts, generateRecommendations
-│   ├── strings.ts                  # All UI text constants — never hardcoded in components
-│   ├── auth.ts                     # Session helpers: setUserSession, getUserSession, clear
-│   ├── mockData.ts                 # MOCK_CREDENTIALS for demo login
-│   └── mockData/
-│       ├── clients.ts              # 6 HNI client summaries
-│       ├── portfolios.ts           # Full asset allocation + 60+ holdings
-│       └── performance.ts          # 6-month indexed returns (Dec 2025 → May 2026)
-│
-├── types/
-│   └── index.ts                    # All domain types: Client, Portfolio, Holding, DriftResult…
-│
-├── providers/
-│   ├── StoreProvider.tsx           # Redux Provider + hydrateAuthThunk on mount
-│   └── ThemeProvider.tsx           # Dark mode context — reads/writes pp_theme to localStorage
-│
-└── hooks/
-    └── useAuth.ts                  # Thin hook: exposes user, login, logout from Redux
+├── public/                                 # Static assets (SVGs)
+├── next.config.mjs
+├── tsconfig.json                           # @/* alias → ./src/*
+├── vitest.config.mts
+├── eslint.config.mjs
+└── package.json
 ```
 
 ---
@@ -259,20 +290,44 @@ Slices and thunks live in separate folders with clearly distinct responsibilitie
 
 Import pattern enforces intent: dispatching an async operation → import from `store/thunks/`. Reading state or dispatching sync action → import from `store/slices/`. This removes the mental context-switch between Immer reducer code and `fetch()` network code sitting in the same file.
 
-### 3. Centralised Utilities
+### 3. Constants and Helpers Separation
 
-| File | Purpose |
+All shared values and utilities are split into two top-level folders instead of one monolithic `lib/constants.ts`:
+
+| Folder | Contents |
 |---|---|
-| `lib/constants.js` | Single source of truth for enums, thresholds, color maps |
-| `lib/formatters.js` | All display formatting — `formatCurrency` renders `₹12.5 Cr`, `₹45 L`, raw INR |
-| `lib/strings.js` | All UI text — components import from here, never embed string literals |
-| `components/ui/Icons.js` | All SVG icons in one file — eliminates copy-pasted inline SVG |
+| `constants/domain.ts` | Business enums, thresholds, color maps, sort fields, auth/theme keys |
+| `constants/ui.ts` | Table dimensions, avatar gradients, debounce delay, toast duration |
+| `constants/charts.ts` | Chart heights, margins, stroke widths, line colors |
+| `constants/strings.ts` | All UI text — headings, labels, placeholders, error messages |
+| `constants/routes.ts` | `ROUTES` object and `ROUTE_META` page titles |
+| `constants/animation.ts` | CSS animation durations and delays used in loading screens |
+| `constants/particles.ts` | ParticleCanvas physics tuning constants |
+| `helpers/formatters.ts` | `formatCurrency` (INR Cr/L), `formatPercentage`, `formatDate` |
+| `helpers/session.ts` | `setUserSession`, `getUserSession`, `clearUserSession` |
 
-### 4. Rebalancing Engine — Pure Functions
+Each category file has a single responsibility, so a UI engineer adding a new string knows exactly where to look, and changing a chart dimension doesn't require opening a 400-line constants file. `constants/index.ts` and `helpers/index.ts` are barrel re-exports so consumers can import from either the barrel or the specific file.
 
-`lib/rebalancingEngine.js` exports four pure functions with zero knowledge of React, Redux, or the API layer:
+### 4. Micro Component Extraction
 
-```js
+Large parent components had inline sub-components extracted into their own files once they had independent identity and reuse potential:
+
+| Extracted component | Parent | Reason |
+|---|---|---|
+| `clients/ClientRow.tsx` | `ClientsTable` | Memoised with `React.memo` — needs its own module boundary |
+| `clients/ClientAvatar.tsx` | `ClientRow` | Reusable gradient avatar, independent test surface |
+| `clients/AlertBadge.tsx` | `ClientRow` | Reusable status badge |
+| `portfolio/ActionBadge.tsx` | `RebalancingPanel` | Reusable Buy/Sell badge |
+| `portfolio/DriftIndicator.tsx` | `RebalancingPanel` | Non-trivial progress bar with color logic |
+| `layout/AuthLoader.tsx` | `AuthGuard` | Full-screen animated screen, keeps AuthGuard clean |
+
+Very small one-liner helpers (e.g. `ReturnCell`, `RiskBadge` inside `ClientRow`) stay inline because they're trivial and only used by one parent.
+
+### 5. Rebalancing Engine — Pure Functions
+
+`lib/rebalancingEngine.ts` exports four pure functions with zero knowledge of React, Redux, or the API layer:
+
+```ts
 computeDrifts(assetAllocation)                  // drift, direction, requiresAction per class
 requiresRebalancing(assetAllocation)            // true if any class exceeds 5pp threshold
 generateRebalancingRecommendations(portfolio)   // proportional buy/sell per instrument
@@ -281,12 +336,12 @@ validateAllocation(assetAllocation)             // checks current + target sum t
 
 **Algorithm:** Overweight classes → proportional sells weighted by holding value. Underweight → proportional buys. No existing holdings in a class → recommends a representative index fund.
 
-### 5. Preventing Duplicate API Calls (React Strict Mode)
+### 6. Preventing Duplicate API Calls (React Strict Mode)
 
 React 18 Strict Mode intentionally mounts → unmounts → remounts components in development. Without guards, `useEffect` dispatches run twice.
 
 **Layer 1 — `createAsyncThunk` `condition` option**
-```js
+```ts
 condition: (_, { getState }) => {
   const { loading, items } = getState().clients;
   return !loading && items.length === 0;
@@ -295,7 +350,7 @@ condition: (_, { getState }) => {
 `dispatch(thunk())` synchronously fires the `pending` action (setting `loading = true`). The Strict Mode second mount sees `loading = true` and the thunk is cancelled before any network request. The `items.length === 0` check also prevents redundant re-fetches when navigating back.
 
 **Layer 2 — `useRef` guard in dashboard page**
-```js
+```ts
 const hasFetched = useRef(false);
 useEffect(() => {
   if (hasFetched.current) return;
@@ -305,7 +360,7 @@ useEffect(() => {
 ```
 Refs persist across the Strict Mode remount cycle, so the second invocation is skipped.
 
-### 6. Dark Mode — Blocking Script (No FOUC)
+### 7. Dark Mode — Blocking Script (No FOUC)
 
 `ThemeProvider` reads `localStorage` in a `useEffect` which fires after paint — causing a white-flash. The fix is a synchronous blocking `<script>` in `<head>` that runs before React hydration:
 
@@ -321,7 +376,7 @@ Refs persist across the Strict Mode remount cycle, so the second invocation is s
 })()
 ```
 
-### 7. State Management — Why Redux
+### 8. State Management — Why Redux
 
 Redux is used for three domains that genuinely need cross-component sharing:
 
@@ -331,13 +386,13 @@ Redux is used for three domains that genuinely need cross-component sharing:
 
 Local `useState` handles ephemeral UI state: HoldingsTable sort, password visibility, button loading. `selectFilteredSortedClients` is a memoised selector that applies filter + search + sort in one pass.
 
-### 8. API Design
+### 9. API Design
 
 Every endpoint returns proper HTTP status codes (`404`, `400`, `405`), adds 100–200ms artificial latency to make loading states visible, and returns consistent envelope shapes: `{ clients }`, `{ portfolio }`, `{ performance }`, `{ status, reviewedAt }`. The `/portfolio` endpoint runs `generateRebalancingRecommendations()` server-side — the client receives pre-computed data, not raw allocation to crunch itself.
 
-### 9. Authentication
+### 10. Authentication
 
-Credentials validated in the Redux thunk (no network round-trip). Session stored in `localStorage` under `pp_auth`. `StoreProvider` dispatches `hydrateAuthThunk()` on first mount to rehydrate Redux. `DashboardLayout` is the auth guard — unauthenticated users redirect to `/login`.
+Credentials validated against `MOCK_CREDENTIALS` in the Redux thunk (no network round-trip). Session stored in `localStorage` under `pp_auth`. `StoreProvider` dispatches `hydrateAuthThunk()` on first mount to rehydrate Redux. `AuthGuard` in the dashboard layout checks the session and redirects unauthenticated users to `/login`.
 
 ---
 
@@ -357,30 +412,30 @@ User types → setInputValue() [immediate — keeps cursor in sync]
 
 **Why `useTransition`?** Marks the Redux dispatch + filter re-render as a non-urgent (interruptible) update. If the user types again before the transition completes, React cancels the in-progress filter render and starts fresh with the new value. The input field itself always updates immediately regardless.
 
-```js
+```ts
 const [inputValue, setInputValue] = useState('');
 const [isPending, startTransition] = useTransition();
-const debounceRef = useRef(null);
+const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-const handleSearch = useCallback((value) => {
+const handleSearch = useCallback((value: string) => {
   setInputValue(value);                        // immediate
-  clearTimeout(debounceRef.current);
+  if (debounceRef.current) clearTimeout(debounceRef.current);
   debounceRef.current = setTimeout(() => {
     startTransition(() => {                    // deferred + interruptible
       dispatch(setSearchQuery(value));
     });
-  }, 250);
+  }, DEBOUNCE_MS);
 }, [dispatch]);
 ```
 
-`isPending` dims the input and shows a small pulse indicator while the transition is in progress, giving the user subtle feedback that filtering is running.
+`isPending` dims the input and shows a small pulse indicator while the transition is in progress.
 
 ### 2. `createAsyncThunk` Condition Guard
 
-Instead of letting the calling component decide whether to skip a fetch, the guard lives inside the thunk itself. This means the protection works regardless of how many components dispatch the same thunk:
+Instead of letting the calling component decide whether to skip a fetch, the guard lives inside the thunk itself:
 
-```js
-// store/thunks/clientsThunks.js
+```ts
+// store/thunks/clientsThunks.ts
 condition: (_, { getState }) => {
   const { loading, items } = getState().clients;
   return !loading && items.length === 0;
@@ -393,28 +448,35 @@ condition: (_, { getState }) => {
 
 A ref persists across React Strict Mode's intentional remount cycle, unlike a `useState` or an in-module variable:
 
-```js
+```ts
 const hasFetched = useRef(false);
 useEffect(() => {
   if (hasFetched.current) return;
   hasFetched.current = true;
   dispatch(fetchClients());
 }, [dispatch]);
-// dispatch is stable — this effect genuinely only runs once per component instance
 ```
 
 When the component unmounts (navigation away) and remounts (navigation back), it creates a new instance with `hasFetched.current = false` — but the `condition` in the thunk skips re-fetching since `items.length > 0`.
 
-### 4. Staggered CSS Animations via CSS Variable
+### 4. Virtual Scrolling (ClientsTable)
 
-Table rows animate in with a stagger delay using a CSS custom property (`--row-delay`) set per row as an inline style. This avoids JavaScript animation libraries entirely:
+`@tanstack/react-virtual` (`useVirtualizer`) renders only the rows visible in the viewport — constant DOM size regardless of list length. Row height is fixed at `CLIENTS_TABLE.ROW_HEIGHT` (57px) so the virtualiser can calculate offsets without layout thrashing.
 
-```jsx
-// ClientsTable.js
-<tr
-  className="row-animate"
-  style={{ '--row-delay': `${index * 45}ms` }}
->
+### 5. Memoised Row Component (`React.memo`)
+
+`ClientRow` is wrapped in `React.memo` so it only re-renders when its own `client` prop or `onClick` reference changes. The `onClick` handler is defined with `useCallback` in the parent, keeping the reference stable across parent re-renders caused by unrelated state changes (e.g. search input typing).
+
+### 6. Memoised Selector (`createSelector`)
+
+`selectFilteredSortedClients` in `clientsSlice.ts` is built with `createSelector` from Redux Toolkit. It recomputes only when `items`, `filters`, or `sort` change — not on every render. With 6 clients this is academic; at 10,000 it prevents expensive re-sorts on every keystroke.
+
+### 7. Staggered CSS Animations via CSS Variable
+
+Table rows animate in with a stagger delay using a CSS custom property (`--row-delay`) set per row as an inline style:
+
+```tsx
+<tr className="row-animate" style={{ '--row-delay': `${index * 45}ms` } as React.CSSProperties}>
 ```
 
 ```css
@@ -426,15 +488,15 @@ Table rows animate in with a stagger delay using a CSS custom property (`--row-d
 }
 ```
 
-### 5. Dark Mode Without Flash (Blocking Script)
+### 8. Dark Mode Without Flash (Blocking Script)
 
-Covered in Architecture Decision #6. Key point: `ThemeProvider` still handles toggling and persistence, but the visual initial state is set synchronously by the blocking script before React even starts — the two layers don't conflict because they both write to the same `document.documentElement.classList`.
+Covered in Architecture Decision #7. `ThemeProvider` handles toggling and persistence; the blocking script sets the initial visual state synchronously before React starts — the two layers don't conflict because they both write to `document.documentElement.classList`.
 
 ---
 
 ## API Reference
 
-All endpoints are Next.js Route Handlers under `app/api/`.
+All endpoints are Next.js Route Handlers under `src/app/api/`.
 
 ### `GET /api/clients`
 
@@ -470,7 +532,7 @@ Returns full portfolio detail including computed rebalancing recommendations.
 ```json
 {
   "portfolio": {
-    "client": { "id": "c001", "name": "Arjun Mehta", ... },
+    "client": { "id": "c001", "name": "Arjun Mehta" },
     "totalValue": 125000000,
     "lastRebalancedAt": "2025-11-20",
     "rebalancingStatus": "pending",
@@ -479,15 +541,20 @@ Returns full portfolio detail including computed rebalancing recommendations.
     ],
     "holdings": [
       {
-        "id": "h001", "instrumentName": "Reliance Industries",
-        "ticker": "RELIANCE", "assetClass": "Equities",
-        "currentValue": 5200000, "gainLoss": 420000,
-        "gainLossPct": 8.8, "weightPct": 4.16
+        "id": "h001",
+        "instrumentName": "Reliance Industries",
+        "ticker": "RELIANCE",
+        "assetClass": "Equities",
+        "currentValue": 5200000,
+        "gainLossAbs": 420000,
+        "gainLossPct": 8.8,
+        "weightPct": 4.16
       }
     ],
     "recommendations": [
       {
-        "id": "rec-h001", "action": "SELL",
+        "id": "rec-h001",
+        "action": "SELL",
         "instrumentName": "Reliance Industries",
         "amount": 875000,
         "reason": "Equities overweight by 7.0pp (target 60%, current 67%)"
@@ -540,8 +607,8 @@ Marks a rebalance as reviewed. Updates the portfolio status in memory.
 
 | Key | Value | Set by | Purpose |
 |---|---|---|---|
-| `pp_auth` | JSON session object | `authThunks.loginThunk` | Persists auth session across page reloads |
-| `pp_theme` | `"dark"` or `"light"` | `ThemeProvider.toggleTheme` | Persists dark mode preference |
+| `pp_auth` | JSON session object | `store/thunks/authThunks.ts` | Persists auth session across page reloads |
+| `pp_theme` | `"dark"` or `"light"` | `providers/ThemeProvider.tsx` | Persists dark mode preference |
 
 Both keys are cleared on logout. Neither contains sensitive data — `pp_auth` holds only the user's name, role, and login timestamp (no password, no token).
 
@@ -575,15 +642,15 @@ Both keys are cleared on logout. Neither contains sensitive data — `pp_auth` h
 
 ### 1. TypeScript — Fully Migrated
 
-The codebase was originally prototyped in JavaScript for speed, then fully migrated to TypeScript in commit 2 (see Commit History). All source files are now `.ts`/`.tsx` with `strict: true` — zero `any` escapes except where Recharts' incomplete third-party types require a single `as unknown` cast.
+The codebase was originally prototyped in JavaScript for speed, then fully migrated to TypeScript (see Commit History). All source files are now `.ts`/`.tsx` with `strict: true` — zero `any` escapes except where Recharts' incomplete third-party types require a single `as unknown` cast.
 
 ### 2. Client-side auth
 
-`localStorage` auth is acceptable for this demo. Production would use `httpOnly` cookies with a server-issued JWT and Next.js Middleware (`middleware.js`) for edge-level route protection.
+`localStorage` auth is acceptable for this demo. Production would use `httpOnly` cookies with a server-issued JWT and Next.js Middleware for edge-level route protection.
 
 ### 3. No pagination
 
-The client table renders all records in memory. With more data, this is the first thing to fix — see the 10,000 records section.
+The client table renders all records in memory with virtual scrolling. With more data, the first fix would be server-side pagination — see the 10,000 records section.
 
 ### 4. Rebalance state is not persistent
 
@@ -591,7 +658,7 @@ Marking a rebalance as reviewed updates Redux and the mock API responds `200`, b
 
 ### 5. Unit tests — rebalancing engine only
 
-52 Vitest tests cover `computeDrifts`, `requiresRebalancing`, `validateAllocation`, and `generateRebalancingRecommendations` (see `__tests__/rebalancingEngine.test.ts`). React component tests were not added — `@testing-library/react` requires `jsdom` and SSR-safe mocking of Next.js router/Redux, which would take longer to configure correctly than the component logic warrants for this demo.
+52 Vitest tests cover `computeDrifts`, `requiresRebalancing`, `validateAllocation`, and `generateRebalancingRecommendations` (see `src/__tests__/rebalancingEngine.test.ts`). React component tests were not added — `@testing-library/react` requires `jsdom` and SSR-safe mocking of Next.js router/Redux, which would take longer to configure correctly than the component logic warrants for this demo.
 
 ### 6. Recharts SSR
 
@@ -611,7 +678,7 @@ Recharts does not support SSR. All chart components carry `'use client'`. In pro
 
 2. **Server-side filtering and search** — Move filter/search to query params. The `useTransition` + debounce already exists client-side; the 250ms debounce becomes a server query delay instead.
 
-3. **Virtual scrolling** — `@tanstack/react-virtual` renders only visible rows in the DOM, giving constant DOM size regardless of list length.
+3. **Virtual scrolling** — Already implemented via `@tanstack/react-virtual`. Renders only visible rows in the DOM, giving constant DOM size regardless of list length.
 
 4. **Selective alert endpoint** — `GET /api/clients/alerts` returns only flagged client IDs for the morning overview. Full list loaded lazily.
 
@@ -628,9 +695,12 @@ Recharts does not support SSR. All chart components carry `'use client'`. In pro
 | # | Commit | Description |
 |---|---|---|
 | 1 | `Initial commit` | Full JavaScript (ES2022) implementation — all features built, mock data, Redux architecture, charts, rebalancing engine, dark mode |
-| 2 | `feat(ts): migrate entire codebase from JavaScript to TypeScript` | Every `.js`/`.jsx` file converted to `.ts`/`.tsx`; `strict: true` enabled; zero type errors; Recharts v3 type workarounds; done with Claude's assistance |
-| 3 | `docs: update README for TypeScript migration and add commit history` | README updated to reflect TypeScript stack, project structure updated, new sections added |
-| 4 | `test: add 52 unit tests for rebalancing engine` | Vitest configured (`vitest.config.mts`); `__tests__/rebalancingEngine.test.ts` covers all four exported pure functions — boundary conditions, edge cases, proportional split logic, fallback index fund path |
+| 2 | `feat(ts): migrate entire codebase from JavaScript to TypeScript` | Every `.js`/`.jsx` file converted to `.ts`/`.tsx`; `strict: true` enabled; zero type errors; Recharts v3 type workarounds |
+| 3 | `docs: update README for TypeScript migration` | README updated to reflect TypeScript stack and architecture |
+| 4 | `test: add 52 unit tests for rebalancing engine` | Vitest configured; `__tests__/rebalancingEngine.test.ts` covers all four exported pure functions — boundary conditions, edge cases, proportional split logic, fallback index fund path |
+| 5 | `feat: constants centralisation` | All inline magic values extracted into typed, category-split files under `constants/`; helper utilities extracted to `helpers/`; all consumer imports updated |
+| 6 | `refactor: extract micro components` | `ClientRow`, `ClientAvatar`, `AlertBadge`, `ActionBadge`, `DriftIndicator`, `AuthLoader` extracted from their parent files into dedicated modules; `AuthGuard` slimmed to 20 lines |
+| 7 | `refactor: move source into src/` | All application folders moved under `src/`; `tsconfig.json` path alias updated to `./src/*`; root contains only config and tooling files |
 
 ---
 
@@ -642,37 +712,38 @@ Features, architecture decisions, and code patterns implemented with Claude's as
 
 - **Full codebase migration** — every `.js`/`.jsx` converted to `.ts`/`.tsx` with `strict: true`, zero `any` escapes
 - **Domain type system** (`types/index.ts`) — `Client`, `Portfolio`, `Holding`, `RiskProfile`, `RebalancingStatus`, `MockPortfolioData` (Omit pattern), and more
-- **Redux typed infrastructure** — `RootState`, `AppDispatch`, `AppStore` exported from `store/index.ts`; `selectClientById` and `selectCurrentPortfolio` selectors added
-- **`Record<string, unknown>` cast pattern** — used in `clientsSlice.ts` and `HoldingsTable.tsx` to sort by dynamic field keys without index-signature errors
-- **Recharts v3 type workarounds** — replaced broken recharts type exports with custom local interfaces (`CustomTooltipProps`, `CustomLegendProps`, `LegendEntry`, `TooltipPayloadEntry`)
+- **Redux typed infrastructure** — `RootState`, `AppDispatch`, `AppStore` exported from `store/index.ts`
+- **`Record<string, unknown>` cast pattern** — used in `clientsSlice.ts` to sort by dynamic field keys without index-signature errors
+- **Recharts v3 type workarounds** — replaced broken recharts type exports with custom local interfaces
 - **Next.js 16 async params** — route handlers typed as `Promise<{ id: string }>`; client pages use the `use(params)` hook
-- **Route group for auth** — login moved to `app/(auth)/login/page.tsx` to resolve duplicate route conflicts after migration
 
-### Auth & Session
+### Constants & Helpers Refactor
 
-- **`lib/mockData.ts`** — `MOCK_CREDENTIALS` array with `MockCredential` interface for demo login
-- **Demo credential buttons** — login page renders clickable cards from `MOCK_CREDENTIALS` so reviewers can sign in without typing
+- **Category-split constants** — 7 typed files in `constants/` replacing one 400-line `lib/constants.ts`; barrel `constants/index.ts` for convenience imports
+- **Helpers folder** — `formatters.ts` and `session.ts` separated from business constants; barrel `helpers/index.ts`
+- **Zero import path changes in component logic** — only import specifiers updated, no business logic touched
+
+### Micro Component Extraction
+
+- **`ClientRow`** — memoised with `React.memo`; `onClick` stabilised with `useCallback` in parent
+- **`ClientAvatar`** — gradient computed from `CLIENT_AVATAR_GRADIENTS[index % length]`
+- **`DriftIndicator`** — layered progress bars (target at 0.3 opacity, current overlaid) with `ASSET_CLASS_COLORS` and `DRIFT_THRESHOLD`
+- **`AuthLoader`** — full-screen particle canvas + ambient blobs + pulsing ring; keeps `AuthGuard` as pure session logic
 
 ### Redux Architecture
 
-- **`createAsyncThunk` condition guard** — prevents duplicate API calls in React Strict Mode's double-mount cycle; guard lives inside the thunk so it protects against any caller
+- **`createAsyncThunk` condition guard** — prevents duplicate API calls in React Strict Mode's double-mount cycle
+- **`createSelector` memoised selector** — `selectFilteredSortedClients` recomputes only on slice changes
+- **Virtual scrolling** — `useVirtualizer` with fixed `ROW_HEIGHT` constant; `ClientRow` memoised to prevent redundant re-renders
 
-### UI & Components
+### Auth & Session
 
-- **Staggered row animations** — `--row-delay: ${index * 45}ms` CSS variable per row; `animation-delay: var(--row-delay)` in `globals.css`; no animation library needed
-- **Dark mode blocking script** — synchronous `<script>` in `<head>` sets the theme class before React hydration, eliminating flash of unstyled content
-- **`AllocationChart`** — Recharts donut with custom tooltip (current %, target %, INR value), drift indicators in legend, and bar comparison rows
-- **`PerformanceChart`** — dual-line chart (portfolio vs Nifty 50) with custom tooltip
-- **`HoldingsTable`** — client-side sortable by any column with CSV export
-- **`RebalancingPanel`** — drift bars with colour-coded over/underweight, buy/sell recommendations, and Mark as Reviewed
-
-### Rebalancing Engine
-
-- **Proportional allocation algorithm** — overweight classes → proportional sells weighted by holding value; underweight → proportional buys; fallback to index fund if no holdings exist in the class
+- **`MOCK_CREDENTIALS` array** — multi-user demo login; login page renders clickable credential cards
+- **`helpers/session.ts`** — `setUserSession`/`getUserSession`/`clearUserSession` isolated from constants
 
 ### Unit Tests
 
-- **Vitest setup** — `vitest.config.mts` with native `resolve.tsconfigPaths: true`; pure Node environment (no jsdom needed for engine-only tests)
+- **Vitest setup** — `vitest.config.mts` with native `resolve.tsconfigPaths: true`; pure Node environment
 - **52 tests across 8 describe blocks** — baseline behaviour + dedicated edge-case suites for each of the four exported functions
 - **Edge cases covered** — empty inputs, mutation safety, large/boundary drifts, zero-value holdings (equal-split fallback), overweight class with no holdings, fallback ticker/ID format (`REALES_IDX`, `rec-new-real-estate`), unique IDs across multi-class portfolios, integer-amount guarantee
 
