@@ -1,4 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
+import { apiRequest, ApiError } from '@/api/client';
+import { ENDPOINTS } from '@/api/endpoints';
 import type { RootState, Portfolio, PerformanceData, Recommendation } from '@/types';
 
 interface SubmitRebalanceArgs {
@@ -22,18 +24,14 @@ export const fetchPortfolio = createAsyncThunk<
   'portfolio/fetchDetail',
   async (clientId, { rejectWithValue }) => {
     try {
-      const res = await fetch(`/api/clients/${clientId}/portfolio`);
-      if (!res.ok) {
-        const err = await res.json();
-        return rejectWithValue((err.message as string) || 'Failed to fetch portfolio');
-      }
-      return res.json() as Promise<{ portfolio: Portfolio }>;
-    } catch (error) {
-      return rejectWithValue((error as Error).message || 'Network error');
+      return await apiRequest<{ portfolio: Portfolio }>({
+        url: ENDPOINTS.clients.portfolio(clientId),
+      });
+    } catch (err) {
+      return rejectWithValue(err instanceof ApiError ? err.message : 'Network error');
     }
   },
   {
-    // Skip if a portfolio fetch is already in flight (handles React Strict Mode double-dispatch)
     condition: (_, { getState }) => !getState().portfolio.portfolioLoading,
   }
 );
@@ -46,18 +44,14 @@ export const fetchPerformance = createAsyncThunk<
   'portfolio/fetchPerformance',
   async (clientId, { rejectWithValue }) => {
     try {
-      const res = await fetch(`/api/clients/${clientId}/performance`);
-      if (!res.ok) {
-        const err = await res.json();
-        return rejectWithValue((err.message as string) || 'Failed to fetch performance');
-      }
-      return res.json() as Promise<{ performance: PerformanceData }>;
-    } catch (error) {
-      return rejectWithValue((error as Error).message || 'Network error');
+      return await apiRequest<{ performance: PerformanceData }>({
+        url: ENDPOINTS.clients.performance(clientId),
+      });
+    } catch (err) {
+      return rejectWithValue(err instanceof ApiError ? err.message : 'Network error');
     }
   },
   {
-    // Skip if performance fetch is already in flight
     condition: (_, { getState }) => !getState().portfolio.performanceLoading,
   }
 );
@@ -70,18 +64,13 @@ export const submitRebalance = createAsyncThunk<
   'portfolio/submitRebalance',
   async ({ clientId, recommendations }, { rejectWithValue }) => {
     try {
-      const res = await fetch(`/api/clients/${clientId}/rebalance`, {
+      return await apiRequest<RebalanceResponse, { recommendations: Recommendation[] }>({
+        url: ENDPOINTS.clients.rebalance(clientId),
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recommendations }),
+        body: { recommendations },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        return rejectWithValue((err.message as string) || 'Failed to submit rebalance');
-      }
-      return res.json() as Promise<RebalanceResponse>;
-    } catch (error) {
-      return rejectWithValue((error as Error).message || 'Network error');
+    } catch (err) {
+      return rejectWithValue(err instanceof ApiError ? err.message : 'Network error');
     }
   }
 );
